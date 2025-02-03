@@ -84,24 +84,13 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
         // int lane_offset = in_base_tile_(lane_row, lane_col);
         int offset = 0;
 
-        if (thread0()) {
-            printf("kRowExec: %d, kColExec: %d\n", kRowExec, kColExec);
-            printf("kSwizzledBlockRows: %d, kSwizzledBlockCols: %d\n",
-                   kSwizzledBlockRows, kSwizzledBlockCols);
-        }
-
 #pragma unroll
         for (int i = 0; i < kRowExec; ++i) {
 #pragma unroll
             for (int j = 0; j < kColExec; ++j) {
-                tile_offset += i * SharedCols * 16 + j * 16;
-                int thrd_offset =
-                    tile_offset + lane_row * SharedCols + lane_col;
+                int thrd_offset = tile_offset + i * SharedCols * 16 + j * 16 +
+                                  lane_row * SharedCols + lane_col;
                 offset = get_swizzle_offset(thrd_offset);
-                // auto base_tile_id = get_base_tile_id(tile_offset);
-                // auto swizzled_tile_id = get_swizzled_tile_id(tile_offset);
-                // auto in_swizzled_tile_id =
-                // get_in_swizzle_tile_id(tile_offset);
 
                 // if (thread0()) {
                 //     printf("i: %d, j: %d\n", i, j);
@@ -133,9 +122,8 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
     //     tl::SharedLayoutWrapper<Shared, LoadMat::kAccessInBits>::Layout;
     // BaseTileSharedLayout in_base_tile_;
 
-    using SrcLayout =
-        tl::MatrixLayout<kSwizzledBlockRows, kSwizzledBlockCols * 8,
-                         Shared::kRowStride, 64>;
+    using SrcLayout = tl::MatrixLayout<kSwizzledBlockRows, kSwizzledBlockCols,
+                                       Shared::kRowStride * 8, 64>;
     SrcLayout src_tile_;
 
     using SwizzledBaseShape = traits::SwizzleBaseTileShape<DType>;
@@ -240,8 +228,11 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
   private:
     using BaseShape = BaseTileShape<DType>;
 
+    // static constexpr int kRowStride = BaseShape::kRows * Shared::kRowStride;
+    // static constexpr int kColStride = BaseShape::kNumel;
+
     static constexpr int kRowStride = BaseShape::kRows * Shared::kRowStride;
-    static constexpr int kColStride = BaseShape::kNumel;
+    static constexpr int kColStride = BaseShape::kCols;
 };
 
 template <typename Reg_, typename Shared_, const int kRowExec_,

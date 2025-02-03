@@ -70,11 +70,16 @@ __global__ void run_test_load(Copy& copy) {
 
     copy(s_tile, r_tile);
 
-    // #if defined(DEBUG)
+#if defined(DEBUG)
     if (thread0()) {
         r_tile.dump_value();
     }
-    // #endif
+#endif
+
+    if (threadIdx.x == 4) {
+        printf("threadIdx.x: %d\n", threadIdx.x);
+        r_tile.dump_value();
+    }
 }
 
 template <typename Shared, typename Reg, typename Loader, typename Storer>
@@ -210,61 +215,61 @@ TEST(TestShared2Reg, operand_A) {  // load mode for loading operand A in gemm
 //     cudaDeviceSynchronize();
 // }
 
-// TEST(TestReg2Shared, operand_C_half) {
-//     using Element = __half;
-
-//     using WarpLayout = tl::RowMajor<1, 1>;
-//     const int kThreads = tl::get_numel<WarpLayout> * 32;
-
-//     // using Shared = SharedTile<Element, tl::RowMajor<16, 16>>;
-//     using Shared = SharedTile<Element, tl::RowMajor<16, 64>>;
-//     // using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 1>>;
-//     using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 4>>;
-
-//     using Loader = SharedToRegLoader<Reg, WarpLayout, WarpReuse::kCont>;
-//     Loader loader;
-
-//     using Storer = RegToSharedStorer<Reg, WarpLayout>;
-//     Storer storer;
-
-//     dim3 dim_grid(1, 1, 1);
-//     dim3 dim_block(kThreads, 1, 1);
-//     int shm_size = Shared::kNumel * sizeof(Element);
-
-//     run_test_store<Shared, Reg, Loader, Storer>
-//         <<<dim_grid, dim_block, shm_size>>>(loader, storer);
-//     cudaDeviceSynchronize();
-// }
-
-TEST(TestShared2Reg, operand_A_swizzle) {
+TEST(TestReg2Shared, operand_C_half) {
     using Element = __half;
 
     using WarpLayout = tl::RowMajor<1, 1>;
     const int kThreads = tl::get_numel<WarpLayout> * 32;
 
-    // const int kRows = 64;
-    // const int kCols = 32;
-
-    const int kRows = 16;
-    const int kCols = 64;
-
-    using SharedLayout = tl::RowMajor<kRows, kCols>;
-    const bool kUseSwizzledLayout = true;
-    using Shared = SharedTile<Element, SharedLayout, kUseSwizzledLayout>;
-    // using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<2, 2>>;
+    // using Shared = SharedTile<Element, tl::RowMajor<16, 16>>;
+    using Shared = SharedTile<Element, tl::RowMajor<16, 64>>;
+    // using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 1>>;
     using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 4>>;
 
-    using Copy = SharedToRegLoader<Reg, WarpLayout, WarpReuse::kRowReuseCont>;
-    Copy copy;
+    using Loader = SharedToRegLoader<Reg, WarpLayout, WarpReuse::kCont>;
+    Loader loader;
+
+    using Storer = RegToSharedStorer<Reg, WarpLayout>;
+    Storer storer;
 
     dim3 dim_grid(1, 1, 1);
     dim3 dim_block(kThreads, 1, 1);
     int shm_size = Shared::kNumel * sizeof(Element);
 
-    run_test_load<Element, Shared, Reg, Copy>
-        <<<dim_grid, dim_block, shm_size>>>(copy);
+    run_test_store<Shared, Reg, Loader, Storer>
+        <<<dim_grid, dim_block, shm_size>>>(loader, storer);
     cudaDeviceSynchronize();
 }
+
+// TEST(TestShared2Reg, operand_A_swizzle) {
+//     using Element = __half;
+
+//     using WarpLayout = tl::RowMajor<1, 1>;
+//     const int kThreads = tl::get_numel<WarpLayout> * 32;
+
+//     // const int kRows = 64;
+//     // const int kCols = 32;
+
+//     const int kRows = 16;
+//     const int kCols = 64;
+
+//     using SharedLayout = tl::RowMajor<kRows, kCols>;
+//     const bool kUseSwizzledLayout = true;
+//     using Shared = SharedTile<Element, SharedLayout, kUseSwizzledLayout>;
+//     // using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<2, 2>>;
+//     using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 4>>;
+
+//     using Copy = SharedToRegLoader<Reg, WarpLayout,
+//     WarpReuse::kRowReuseCont>; Copy copy;
+
+//     dim3 dim_grid(1, 1, 1);
+//     dim3 dim_block(kThreads, 1, 1);
+//     int shm_size = Shared::kNumel * sizeof(Element);
+
+//     run_test_load<Element, Shared, Reg, Copy>
+//         <<<dim_grid, dim_block, shm_size>>>(copy);
+//     cudaDeviceSynchronize();
+// }
 
 // TEST(TestReg2Shared, operand_C_float) {
 //     using Element = __half;
