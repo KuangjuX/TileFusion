@@ -78,6 +78,9 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
     }
 
     DEVICE void operator()(const DType* src, Reg& dst, int tile_offset) {
+        if (thread0()) {
+            printf("Shared::kRowStride: %d\n", Shared::kRowStride);
+        }
         int lane_row = this->lane_row_id();
         int lane_col = this->lane_col_id() * LoadMat::kNumPerAccess;
 
@@ -92,18 +95,6 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
                                   lane_row * SharedCols + lane_col;
                 offset = get_swizzle_offset(thrd_offset);
 
-                // if (thread0()) {
-                //     printf("i: %d, j: %d\n", i, j);
-                //     printf("SharedRows: %d, SharedCols: %d\n", SharedRows,
-                //            SharedCols);
-                //     printf("base_tile_id: (%d, %d)\n", base_tile_id.x,
-                //            base_tile_id.y);
-                //     printf("swizzled_tile_id: (%d, %d)\n",
-                //     swizzled_tile_id.x,
-                //            swizzled_tile_id.y);
-                //     printf("in_swizzled_tile_id: (%d, %d)\n",
-                //            in_swizzled_tile_id.x, in_swizzled_tile_id.y);
-                // }
                 // advance pointer to the 16x16 `BaseTile` indexed by(i, j).
                 // offset = base_tiles_(i, j) + lane_offset;
                 // issue the hardware-backed memory access instruction.

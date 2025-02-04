@@ -69,13 +69,14 @@ __global__ void swizzled_copy(const Element* data, G2S1& g2s,
             s2r(s_tiles(i), r_tile);
             s2r(s_swizzled_tiles(i), r_tile_swizzled);
             __syncthreads();
-#ifdef DEBUG
-            if (thread(0)) {
-                printf("\niteration [%d, %d]\n", k, i);
-                s_tiles(i).dump_value();
 
-                printf("\ns_swizzled_tiles:\n");
-                s_swizzled_tiles(i).dump_value();
+            // #ifdef DEBUG
+            if (thread(0)) {
+                // printf("\niteration [%d, %d]\n", k, i);
+                // s_tiles(i).dump_value();
+
+                // printf("\ns_swizzled_tiles:\n");
+                // s_swizzled_tiles(i).dump_value();
 
                 printf("r_tile:\n");
                 r_tile.dump_value();
@@ -83,7 +84,7 @@ __global__ void swizzled_copy(const Element* data, G2S1& g2s,
                 printf("\nr_tile_swizzled:\n");
                 r_tile_swizzled.dump_value();
             }
-#endif
+            // #endif
             check_results<Reg, Element>(r_tile, r_tile_swizzled, Reg::kRows,
                                         Reg::kCols);
         }
@@ -405,6 +406,9 @@ TEST(TestSwizzledLoad, test_load_row_major) {
     // run_test_rowmajor<tl::RowMajor<1, 1>, 16, 32, 16, 32, 32>();
     // run_test_rowmajor<tl::RowMajor<1, 1>, 32, 32, 32, 32, 16>();
     // run_test_rowmajor<tl::RowMajor<1, 1>, 32, 64, 32, 32, 16>();
+
+    run_test_rowmajor<tl::RowMajor<1, 1>, 32, 64, 32, 64, 64>();
+    run_test_rowmajor<tl::RowMajor<1, 1>, 32, 128, 32, 64, 64>();
 
     // run_test_rowmajor<tl::RowMajor<1, 2>, 16, 64, 16, 32, 32>();
     // run_test_rowmajor<tl::RowMajor<1, 2>, 16, 128, 16, 64, 32>();

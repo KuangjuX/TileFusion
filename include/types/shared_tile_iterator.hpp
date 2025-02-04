@@ -120,13 +120,23 @@ class STileIterator {
     // `BaseTile`. DO NOT modify these unless you fully understand how this
     // layout is used with the Shared to Register loader, as changes might
     // cause significant errors.
-    static constexpr int kTileRowStride = Tile::kType == tl::Layout::kRowMajor
-                                              ? kTilePerCol * BaseShape::kNumel
-                                              : BaseShape::kNumel;
+    // static constexpr int kTileRowStride = Tile::kType ==
+    // tl::Layout::kRowMajor
+    //                                           ? kTilePerCol *
+    //                                           BaseShape::kNumel :
+    //                                           BaseShape::kNumel;
 
-    static constexpr int kTileColStride = Tile::kType == tl::Layout::kRowMajor
-                                              ? BaseShape::kNumel
-                                              : kTilePerRow * BaseShape::kNumel;
+    // static constexpr int kTileColStride = Tile::kType ==
+    // tl::Layout::kRowMajor
+    //                                           ? BaseShape::kNumel
+    //                                           : kTilePerRow *
+    //                                           BaseShape::kNumel;
+
+    static constexpr int kTileRowStride =
+        Tile::kType == tl::Layout::kRowMajor ? Tile::kCols : 1;
+
+    static constexpr int kTileColStride =
+        Tile::kType == tl::Layout::kRowMajor ? 1 : Tile::kRows;
 
     DType* data_;
 };
