@@ -222,9 +222,9 @@ TEST(TestReg2Shared, operand_C_half) {
     const int kThreads = tl::get_numel<WarpLayout> * 32;
 
     // using Shared = SharedTile<Element, tl::RowMajor<16, 16>>;
-    using Shared = SharedTile<Element, tl::RowMajor<16, 64>>;
+    using Shared = SharedTile<Element, tl::RowMajor<64, 128>>;
     // using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 1>>;
-    using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<1, 4>>;
+    using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<4, 8>>;
 
     using Loader = SharedToRegLoader<Reg, WarpLayout, WarpReuse::kCont>;
     Loader loader;
@@ -275,10 +275,10 @@ TEST(TestReg2Shared, operand_C_float) {
     using Element = __half;
     using AccType = float;
 
-    // const int kRowRepeats = 4;
-    // const int kColRepeats = 8;
-    const int kRowRepeats = 1;
-    const int kColRepeats = 4;
+    const int kRowRepeats = 4;
+    const int kColRepeats = 8;
+    // const int kRowRepeats = 1;
+    // const int kColRepeats = 4;
     const int kRows = 16 * kRowRepeats;
     const int kCols = 16 * kColRepeats;
 
