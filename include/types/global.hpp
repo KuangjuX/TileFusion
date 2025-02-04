@@ -19,6 +19,9 @@ struct GlobalTile {
     static constexpr int kRows = tl::num_rows<Layout>;
     static constexpr int kCols = tl::num_cols<Layout>;
 
+    static_assert(kCols % 64 == 0,
+                  "The number of columns must be a multiple of 64.");
+
     static constexpr int kRowStride = tl::row_stride<Layout>;
     static constexpr int kColStride = tl::col_stride<Layout>;
 

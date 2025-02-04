@@ -71,16 +71,16 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
     DEVICE int get_swizzle_offset(int offset) {
         auto swizzled_tile_id = get_swizzled_tile_id(offset);
         auto in_swizzled_tile_id = get_in_swizzle_tile_id(offset);
-        auto swizzled_offset =
-            src_tile_(swizzled_tile_id.x, swizzled_tile_id.y) +
+        int swizzled_tile_offset =
+            src_tile_(swizzled_tile_id.x, swizzled_tile_id.y);
+        int in_swizzled_tile_offset =
             in_src_tile_(in_swizzled_tile_id.x, in_swizzled_tile_id.y);
-        return swizzled_offset;
+
+        offset = swizzled_tile_offset + in_swizzled_tile_offset;
+        return offset;
     }
 
     DEVICE void operator()(const DType* src, Reg& dst, int tile_offset) {
-        if (thread0()) {
-            printf("Shared::kRowStride: %d\n", Shared::kRowStride);
-        }
         int lane_row = this->lane_row_id();
         int lane_col = this->lane_col_id() * LoadMat::kNumPerAccess;
 

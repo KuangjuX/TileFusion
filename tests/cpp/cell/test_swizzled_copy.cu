@@ -81,8 +81,8 @@ __global__ void swizzled_copy(const Element* data, G2S1& g2s,
                 printf("r_tile:\n");
                 r_tile.dump_value();
 
-                printf("\nr_tile_swizzled:\n");
-                r_tile_swizzled.dump_value();
+                // printf("\nr_tile_swizzled:\n");
+                // r_tile_swizzled.dump_value();
             }
             // #endif
             check_results<Reg, Element>(r_tile, r_tile_swizzled, Reg::kRows,
@@ -409,6 +409,8 @@ TEST(TestSwizzledLoad, test_load_row_major) {
 
     run_test_rowmajor<tl::RowMajor<1, 1>, 32, 64, 32, 64, 64>();
     run_test_rowmajor<tl::RowMajor<1, 1>, 32, 128, 32, 64, 64>();
+    run_test_rowmajor<tl::RowMajor<1, 1>, 32, 128, 32, 128, 64>();
+    run_test_rowmajor<tl::RowMajor<1, 1>, 32, 256, 32, 256, 64>();
 
     // run_test_rowmajor<tl::RowMajor<1, 2>, 16, 64, 16, 32, 32>();
     // run_test_rowmajor<tl::RowMajor<1, 2>, 16, 128, 16, 64, 32>();

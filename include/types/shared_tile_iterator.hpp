@@ -78,9 +78,15 @@ class STileIterator {
 
         using NewTile = SharedTile<DType, TileLayout, Tile::kSwizzled>;
 
+        // int offset1 = x * (kChunkRow * Tile::kRowStride) +
+        //               y * kTilePerChunkCol * BaseShape::kNumel;
+        // int offset2 = x * kTilePerChunkRow * BaseShape::kNumel +
+        //               y * (Tile::kColStride * kChunkCol);
+
+        // TODO(KuangjuX): hotfix for `offset1` and `offset2`.
         int offset1 = x * (kChunkRow * Tile::kRowStride) +
-                      y * kTilePerChunkCol * BaseShape::kNumel;
-        int offset2 = x * kTilePerChunkRow * BaseShape::kNumel +
+                      y * kTilePerChunkCol * BaseShape::kCols;
+        int offset2 = x * kTilePerChunkRow * BaseShape::kRows +
                       y * (Tile::kColStride * kChunkCol);
         int offset = Tile::kType == tl::Layout::kRowMajor ? offset1 : offset2;
 
@@ -132,6 +138,7 @@ class STileIterator {
     //                                           : kTilePerRow *
     //                                           BaseShape::kNumel;
 
+    // TODO(KuangjuX): hotfix for `kTileRowStride` and `kTileColStride`.
     static constexpr int kTileRowStride =
         Tile::kType == tl::Layout::kRowMajor ? Tile::kCols : 1;
 
