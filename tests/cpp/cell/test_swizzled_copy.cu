@@ -70,21 +70,21 @@ __global__ void swizzled_copy(const Element* data, G2S1& g2s,
             s2r(s_swizzled_tiles(i), r_tile_swizzled);
             __syncthreads();
 
-            // #ifdef DEBUG
+#ifdef DEBUG
             if (thread(0)) {
-                // printf("\niteration [%d, %d]\n", k, i);
-                // s_tiles(i).dump_value();
+                printf("\niteration [%d, %d]\n", k, i);
+                s_tiles(i).dump_value();
 
-                // printf("\ns_swizzled_tiles:\n");
-                // s_swizzled_tiles(i).dump_value();
+                printf("\ns_swizzled_tiles:\n");
+                s_swizzled_tiles(i).dump_value();
 
                 printf("r_tile:\n");
                 r_tile.dump_value();
 
-                // printf("\nr_tile_swizzled:\n");
-                // r_tile_swizzled.dump_value();
+                printf("\nr_tile_swizzled:\n");
+                r_tile_swizzled.dump_value();
             }
-            // #endif
+#endif
             check_results<Reg, Element>(r_tile, r_tile_swizzled, Reg::kRows,
                                         Reg::kCols);
         }
@@ -145,7 +145,7 @@ void run_test_rowmajor() {
     using Element = __half;
     thrust::host_vector<Element> hA(numel);
     for (int i = 0; i < hA.size(); ++i) {
-        hA[i] = static_cast<Element>(i % 2048);
+        hA[i] = static_cast<Element>(i);
     }
     thrust::device_vector<Element> dA = hA;
 
