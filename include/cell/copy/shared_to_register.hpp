@@ -137,6 +137,7 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
         , in_base_tile_(BaseTileSharedLayout{}) {}
 
     DEVICE void operator()(const DType* src, Reg& dst, int start_offset) {
+        // printf("offset(%d): %d\n", threadIdx.x, start_offset);
         // transpose the lane position if the shared memory is in
         // column-major. 16 threads are mapped to the strided dimension
         // of the data while the 2 threads are mapped to the contiguous

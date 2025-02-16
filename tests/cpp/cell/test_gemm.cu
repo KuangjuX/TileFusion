@@ -204,6 +204,18 @@ __global__ void test_gemm(const Element* ga, const Element* gb,
         load_rA(sAs(k), rA);
         load_rB(sBs(k), rB);
 
+        if (thread0()) {
+            printf("\nrB(thread0):\n");
+            rB.dump_value();
+        }
+
+        __syncthreads();
+
+        if (threadIdx.x == 32) {
+            printf("\nrB(thread32):\n");
+            rB.dump_value();
+        }
+
         compute::gemm(rA, rB, acc);
     }
     __syncthreads();
@@ -276,6 +288,9 @@ void run_test() {
     dim3 dim_block(config::kThreads, 1, 1);
     int shm_size = (kM + kN) * kK * sizeof(Element);
 
+    printf("config::kWarpPerRow: %d, config::kWarpPerCol: %d\n",
+           config::kWarpPerRow, config::kWarpPerCol);
+
     auto kernel = test_gemm<
         Element, ElementAcc, typename config::GlobalA, typename config::SharedA,
         typename config::LoadSharedA, typename config::GlobalB,
@@ -318,16 +333,16 @@ TEST(TestGemm, test) {
     // as this will cause a shared memory overflow.
 
     // 1 warp
-    run_test<16, 16, 64, tl::RowMajor<1, 1>, 64>();  // minimal shape
-    run_test<32, 16, 64, tl::RowMajor<1, 1>, 64>();
-    run_test<16, 32, 64, tl::RowMajor<1, 1>, 64>();
-    run_test<32, 32, 64, tl::RowMajor<1, 1>, 64>();
-    run_test<64, 64, 64, tl::RowMajor<1, 1>, 64>();
-    run_test<128, 64, 64, tl::RowMajor<1, 1>, 64>();
+    // run_test<16, 16, 64, tl::RowMajor<1, 1>, 64>();  // minimal shape
+    // run_test<32, 16, 64, tl::RowMajor<1, 1>, 64>();
+    // run_test<16, 32, 64, tl::RowMajor<1, 1>, 64>();
+    // run_test<32, 32, 64, tl::RowMajor<1, 1>, 64>();
+    // run_test<64, 64, 64, tl::RowMajor<1, 1>, 64>();
+    // run_test<128, 64, 64, tl::RowMajor<1, 1>, 64>();
 
     // 2 x 1 warps
     // TODO(KuangjuX): fix different warp layout.
-    // run_test<128, 64, 128, tl::RowMajor<2, 1>, 64>();
+    run_test<128, 64, 64, tl::RowMajor<2, 1>, 64>();
     // run_test<128, 128, 128, tl::RowMajor<2, 1>, 64>();
 }
 
