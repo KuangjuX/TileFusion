@@ -205,15 +205,15 @@ __global__ void test_gemm(const Element* ga, const Element* gb,
         load_rB(sBs(k), rB);
 
         if (thread0()) {
-            printf("\nrB(thread0):\n");
-            rB.dump_value();
+            printf("\nrA(thread0):\n");
+            rA.dump_value();
         }
 
         __syncthreads();
 
         if (threadIdx.x == 32) {
-            printf("\nrB(thread32):\n");
-            rB.dump_value();
+            printf("\nrA(thread32):\n");
+            rA.dump_value();
         }
 
         compute::gemm(rA, rB, acc);

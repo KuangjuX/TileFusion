@@ -101,7 +101,6 @@ void run_test_rowmajor() {
     using Element = __half;
     const int kThreads = tl::get_numel<WarpLayout> * 32;
     static constexpr int kWarpPerRow = tl::num_rows<WarpLayout>;
-    static constexpr int kWarpPerCol = tl::num_cols<WarpLayout>;
 
     using Global = GlobalTile<Element, tl::RowMajor<kRows, kCols>>;
     using GIterator = GTileIterator<Global, TileShape<kRows, kShmCols>>;
@@ -118,9 +117,7 @@ void run_test_rowmajor() {
     using BaseShape = traits::BaseTileShape<Element>;
 
     const int kSc0 = kShmRows / kWarpPerRow / BaseShape::kRows;
-    // TODO(KuangjuX): Why let `const int kSc1 = kChunkShm / BaseShape::kCols;`?
-    // const int kSc1 = kChunkShm / BaseShape::kCols;
-    const int kSc1 = kChunkShm / kWarpPerCol / BaseShape::kCols;
+    const int kSc1 = kChunkShm / BaseShape::kCols;
 
     using Reg = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<kSc0, kSc1>>;
 
@@ -419,7 +416,7 @@ TEST(TestSwizzledLoad, test_load_row_major) {
     // run_test_rowmajor<tl::RowMajor<1, 1>, 128, 128, 128, 64, 64>();
     run_test_rowmajor<tl::RowMajor<2, 1>, 128, 128, 128, 64, 64>();
     run_test_rowmajor<tl::RowMajor<4, 1>, 128, 128, 128, 128, 128>();
-    run_test_rowmajor<tl::RowMajor<2, 2>, 128, 128, 128, 128, 128>();
+    run_test_rowmajor<tl::RowMajor<4, 2>, 128, 128, 128, 128, 128>();
 
     run_test_rowmajor<tl::RowMajor<1, 2>, 16, 256, 16, 128, 128>();
     run_test_rowmajor<tl::RowMajor<1, 2>, 32, 256, 32, 128, 128>();

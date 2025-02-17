@@ -294,8 +294,10 @@ struct SharedOffsetHelper<WarpLayout_, BaseShape_, Shared_, kMode_,
                        warp_col_id<WarpLayout>() * kColStride *
                            BaseShape::kCols;
             case WarpReuse::kRowReuseCont:
-                return warp_col_id<WarpLayout>() * kColStride *
-                       BaseShape::kCols;
+                // return warp_col_id<WarpLayout>() * kColStride *
+                //        BaseShape::kCols;
+                return warp_row_id<WarpLayout>() * kRowStride *
+                       BaseShape::kRows * Shared::kCols;
             default:
                 assert(false && "Not implemented yet.");
                 return -1;
@@ -331,8 +333,10 @@ struct SharedOffsetHelper<WarpLayout_, BaseShape_, Shared_, kMode_,
                        warp_col_id<WarpLayout>() * kColStride *
                            BaseShape::kCols * Shared::kRows;
             case WarpReuse::kColReuseCont:
-                return warp_row_id<WarpLayout>() * kRowStride *
-                       BaseShape::kRows;
+                // return warp_row_id<WarpLayout>() * kRowStride *
+                //        BaseShape::kRows;
+                return warp_col_id<WarpLayout>() * kColStride *
+                       BaseShape::kCols * Shared::kRows;
             default:
                 assert(false && "Not implemented yet.");
                 return -1;

@@ -510,6 +510,8 @@ struct SharedToRegLoader {
         // warp reuse mode.
         int offset = shared_offset_.get_warp_offset();
 
+        // printf("tid: %d, offset: %d\n", threadIdx.x, offset);
+
         using Loader = detail::SharedToRegLoaderImpl<Shared, Reg, kRowExec,
                                                      kColExec, Shared::kType>;
         Loader loader;
