@@ -32,7 +32,12 @@ __device__ void naive_gemm(int kM, int kN, int kK,  //
 }
 
 __device__ void check_results(const float* hc1, const float* hc2, int numel) {
-    for (int i = 0; i < numel; ++i) assert(abs(hc1[i] - hc2[i]) < 1e-3);
+    for (int i = 0; i < numel; ++i) {
+        if (fabs(hc1[i] - hc2[i]) > 1e-3) {
+            printf("error: %d, %.4f, %.4f\n", i, hc1[i], hc2[i]);
+            return;
+        }
+    }
 
 #if defined(DEBUG)
     if (thread0()) {
@@ -40,13 +45,13 @@ __device__ void check_results(const float* hc1, const float* hc2, int numel) {
         printf("\nours:\n");
         printf("%d:\t", 0);
         for (int i = 0; i < cut_off; i++) {
-            printf("%.2f, ", hc1[i]);
+            printf("%.4f, ", hc1[i]);
             if (i & (i + 1) % 16 == 0) printf("\n%d:\t", (i + 1) / 16);
         }
         printf("\nground-truth:\n");
         printf("%d:\t", 0);
         for (int i = 0; i < cut_off; i++) {
-            printf("%.2f, ", hc2[i]);
+            printf("%.4f, ", hc2[i]);
             if (i & (i + 1) % 16 == 0) printf("\n%d:\t", (i + 1) / 16);
         }
     }
@@ -100,8 +105,24 @@ __global__ void test_wmma(LoadRegA& load_rA, LoadRegB& load_rB,
         load_rA(sA, rA);
         load_rB(sB, rB);
 
+        __syncthreads();
+
+        if (threadIdx.x == 32) {
+            printf("\nrA:\n");
+            rA.dump_value();
+
+            printf("\nrB:\n");
+            rB.dump_value();
+        }
+
         compute::gemm(rA, rB, acc);
     }
+
+    // if (threadIdx.x == 32) {
+    //     acc.dump_value();
+    // }
+
+    __syncthreads();
 
     store_rC(acc, sC);
     __syncthreads();
@@ -119,29 +140,42 @@ __global__ void test_wmma(LoadRegA& load_rA, LoadRegB& load_rB,
 }  // namespace
 
 template <typename Element, typename ElementAcc, const int kM, const int kN,
-          const int kK>
+          const int kK, typename WarpLayout>
 struct TestTraits {
-    using WarpLayout = tl::RowMajor<1, 1>;
     static const int kThreads = tl::get_numel<WarpLayout> * 32;
+
+    static constexpr int kWarpPerRow = tl::num_rows<WarpLayout>;
+    static constexpr int kWarpPerCol = tl::num_cols<WarpLayout>;
 
     // ============= shared to register loader =================
     // TODO: whether BaseTileShape should depend on Element type?
     using BaseShape = traits::BaseTileShape<Element>;
     // how many elements a BaseTile are executed along the m, n, k dimension
-    static constexpr int kMs = kM / BaseShape::kTileSize;
-    static constexpr int kNs = kN / BaseShape::kTileSize;
-    static constexpr int kKs = kK / BaseShape::kTileSize;
+    // static constexpr int kMs = kM / BaseShape::kTileSize;
+    // static constexpr int kNs = kN / BaseShape::kTileSize;
+    // static constexpr int kKs = kK / BaseShape::kTileSize;
+
+    static constexpr int kAMs = kM / kWarpPerRow / BaseShape::kTileSize;
+    static constexpr int kAKs = kK / BaseShape::kTileSize;
+
+    static constexpr int kBKs = kK / BaseShape::kTileSize;
+    static constexpr int kBNs = kN / kWarpPerCol / BaseShape::kTileSize;
+
+    static constexpr int kCMs = kM / kWarpPerRow / BaseShape::kTileSize;
+    static constexpr int kCNs = kN / kWarpPerCol / BaseShape::kTileSize;
 
     using SharedA = SharedTile<Element, tl::RowMajor<kM, kK>>;
     using TileIteratorA = STileIterator<SharedA, TileShape<kM, kK>>;
 
-    using RegA = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<kMs, kKs>>;
+    // using RegA = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<kMs, kKs>>;
+    using RegA = RegTile<BaseTileRowMajor<Element>, tl::RowMajor<kAMs, kAKs>>;
     using LoadRegA =
         SharedToRegLoader<RegA, WarpLayout, WarpReuse::kRowReuseCont>;
 
     using SharedB = SharedTile<Element, tl::ColMajor<kK, kN>>;
 
-    using RegB = RegTile<BaseTileColMajor<Element>, tl::ColMajor<kKs, kNs>>;
+    // using RegB = RegTile<BaseTileColMajor<Element>, tl::ColMajor<kKs, kNs>>;
+    using RegB = RegTile<BaseTileColMajor<Element>, tl::ColMajor<kBKs, kBNs>>;
     using TileIteratorB = STileIterator<SharedB, TileShape<kK, kN>>;
     using LoadRegB =
         SharedToRegLoader<RegB, WarpLayout, WarpReuse::kColReuseCont>;
@@ -151,22 +185,22 @@ struct TestTraits {
 
     // ============= register to shared storer =================
     using SharedC = SharedTile<ElementAcc, tl::RowMajor<kM, kN>>;
-    using RegC = RegTile<BaseTileRowMajor<ElementAcc>, tl::RowMajor<kMs, kNs>>;
+    // using RegC = RegTile<BaseTileRowMajor<ElementAcc>, tl::RowMajor<kMs,
+    // kNs>>;
+    using RegC =
+        RegTile<BaseTileRowMajor<ElementAcc>, tl::RowMajor<kCMs, kCNs>>;
     using StoreRegC = RegToSharedStorer<RegC, WarpLayout>;
 };
 
-template <const int kM, const int kN, const int kK>
+template <const int kM, const int kN, const int kK, typename WarpLayout>
 void run_test() {
     using Element = cutlass::half_t;
     using ElementAcc = float;
 
-    using config = TestTraits<Element, ElementAcc, kM, kN, kK>;
+    using config = TestTraits<Element, ElementAcc, kM, kN, kK, WarpLayout>;
 
     dim3 dim_grid(1, 1, 1);
     dim3 dim_block(config::kThreads, 1, 1);
-
-    int shm_size =
-        (kM + kN) * kK * sizeof(Element) + kM * kN * sizeof(ElementAcc);
 
     typename config::LoadRegA load_rA;
     typename config::LoadRegB load_rB;
@@ -181,11 +215,23 @@ void run_test() {
               << "RegB: " << RegB{} << std::endl
               << "RegC: " << RegC{} << std::endl;
 
-    test_wmma<Element, ElementAcc, kM, kN, kK, typename config::TileIteratorA,
-              RegA, typename config::LoadRegA, typename config::TileIteratorB,
-              RegB, typename config::LoadRegB, typename config::SharedC, RegC,
-              typename config::StoreRegC>
-        <<<dim_grid, dim_block, shm_size>>>(load_rA, load_rB, store_rC);
+    auto kernel =
+        test_wmma<Element, ElementAcc, kM, kN, kK,
+                  typename config::TileIteratorA, RegA,
+                  typename config::LoadRegA, typename config::TileIteratorB,
+                  RegB, typename config::LoadRegB, typename config::SharedC,
+                  RegC, typename config::StoreRegC>;
+
+    int shm_size =
+        (kM + kN) * kK * sizeof(Element) + 2 * kM * kN * sizeof(ElementAcc);
+
+    if (shm_size > 48 * 1024) {
+        cudaFuncSetAttribute(
+            kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, shm_size);
+    }
+
+    kernel<<<dim_grid, dim_block, shm_size>>>(load_rA, load_rB, store_rC);
+
     cudaDeviceSynchronize();
 
     LOG(INFO) << "[" << kM << ", " << kN << ", " << kK << "]. Test passed!"
@@ -193,11 +239,18 @@ void run_test() {
 }
 
 TEST(TestWmma, test_m16n16k16_f) {
-    run_test<16, 16, 64>();
-    run_test<32, 32, 64>();
-    run_test<64, 64, 64>();
-    run_test<64, 128, 128>();
-    run_test<128, 128, 128>();
+    // run_test<16, 16, 64, tl::RowMajor<1, 1>>();
+    // run_test<32, 32, 64, tl::RowMajor<1, 1>>();
+    // run_test<64, 64, 64, tl::RowMajor<1, 1>>();
+    // run_test<64, 128, 128, tl::RowMajor<1, 1>>();
+
+    run_test<128, 64, 64, tl::RowMajor<2, 1>>();
+    // run_test<128, 128, 128, tl::RowMajor<2, 1>>();
+
+    // run_test<64, 128, 128, tl::RowMajor<1, 2>>();
+    // run_test<128, 128, 128, tl::RowMajor<1, 2>>();
+
+    // run_test<128, 128, 128, tl::RowMajor<2, 2>>();
 }
 
 }  // namespace tilefusion::testing

@@ -39,6 +39,10 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
         int lane_row = this->lane_row_id();
         int lane_col = this->lane_col_id() * LoadMat::kNumPerAccess;
 
+        if (thread0()) {
+            printf("kRowExec: %d, kColExec: %d\n", kRowExec, kColExec);
+        }
+
 #pragma unroll
         for (int i = 0; i < kRowExec; ++i) {
 #pragma unroll
@@ -48,9 +52,19 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
                     j * BaseShape::kCols + lane_row * kSharedCols + lane_col;
                 int offset = get_swizzle_offset(tile_offset);
 
+                // if (threadIdx.x == 32) {
+                //     printf("thread(32) tile_offset: %d, offset: %d\n",
+                //            tile_offset, offset);
+                // }
+
                 // advance pointer to the 16x16 `BaseTile` indexed by(i, j).
                 // issue the hardware-backed memory access instruction.
                 this->ldmatrix(src + offset, dst(i, j).mutable_data());
+
+                if (threadIdx.x == 32) {
+                    printf("\nthread(32) dst(%d, %d):\n", i, j);
+                    dst(i, j).dump_value();
+                }
             }
         }
     }
@@ -137,7 +151,6 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
         , in_base_tile_(BaseTileSharedLayout{}) {}
 
     DEVICE void operator()(const DType* src, Reg& dst, int start_offset) {
-        // printf("offset(%d): %d\n", threadIdx.x, start_offset);
         // transpose the lane position if the shared memory is in
         // column-major. 16 threads are mapped to the strided dimension
         // of the data while the 2 threads are mapped to the contiguous
@@ -155,6 +168,11 @@ struct SharedToRegLoaderImpl<Shared, Reg_, kRowExec_, kColExec_,
 
                 // issue the hardware-backed memory access instruction
                 this->ldmatrix(src + offset, dst(j, i).mutable_data());
+
+                if (threadIdx.x == 32) {
+                    printf("\nthread(32) dst(%d, %d):\n", j, i);
+                    dst(j, i).dump_value();
+                }
             }
         }
     }
@@ -256,9 +274,9 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
 
     DEVICE void operator()(const Reg& src, DType* dst, int start_offset) {
 #pragma unroll
-        for (int i = 0; i < kRowExec; ++i) {
+        for (int j = 0; j < kColExec; ++j) {
 #pragma unroll
-            for (int j = 0; j < kColExec; ++j) {
+            for (int i = 0; i < kRowExec; ++i) {
                 int lane_row = this->lane_row_id();
                 int lane_col = this->lane_col_id();
 
@@ -373,11 +391,11 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
 
     DEVICE void operator()(const Reg& src, DType* dst, int start_offset) {
 #pragma unroll
-        for (int i = 0; i < kColExec; ++i) {
+        for (int j = 0; j < kColExec; ++j) {
 #pragma unroll
-            for (int j = 0; j < kRowExec; ++j) {
+            for (int i = 0; i < kRowExec; ++i) {
                 int tile_offset =
-                    start_offset + i * kColStride + j * kRowStride;
+                    start_offset + j * kColStride + i * kRowStride;
                 int lane_row = this->lane_row_id();
                 int lane_col = this->lane_col_id();
 
@@ -385,10 +403,10 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
 #pragma unroll
                 for (int m = 0; m < StoreMat::kSegRows; ++m) {
                     row = StoreMat::kElemPerSeg *
-                          (lane_row + i * StoreMat::kThreadRows);
+                          (lane_row + m * StoreMat::kThreadRows);
 #pragma unroll
                     for (int n = 0; n < StoreMat::kSegCols; ++n) {
-                        col = lane_col + j * StoreMat::kThreadCols;
+                        col = lane_col + n * StoreMat::kThreadCols;
 
                         int in_tile_offset = col * Shared::kColStride + row;
                         int offset = tile_offset + in_tile_offset;
@@ -396,7 +414,7 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
 
                         const PackedType* src_ptr =
                             reinterpret_cast<const PackedType*>(
-                                src(j, i).data());
+                                src(i, j).data());
                         PackedType* dst_ptr =
                             reinterpret_cast<PackedType*>(dst);
                         dst_ptr[swizzled_offset / StoreMat::kElemPerSeg] =
@@ -464,9 +482,9 @@ struct RegToSharedStorerImpl<Reg_, Shared_, kRowExec_, kColExec_,
         auto swizzled_tile_id = get_swizzled_tile_id(offset);
         auto in_swizzled_tile_id = get_in_swizzle_tile_id(offset);
         int swizzled_tile_offset =
-            src_tile_(swizzled_tile_id.x, swizzled_tile_id.y);
+            dst_tile_(swizzled_tile_id.x, swizzled_tile_id.y);
         int in_swizzled_tile_offset =
-            in_src_tile_(in_swizzled_tile_id.x, in_swizzled_tile_id.y);
+            in_dst_tile_(in_swizzled_tile_id.x, in_swizzled_tile_id.y);
 
         int offset_ = swizzled_tile_offset + in_swizzled_tile_offset;
 
@@ -510,7 +528,9 @@ struct SharedToRegLoader {
         // warp reuse mode.
         int offset = shared_offset_.get_warp_offset();
 
-        // printf("tid: %d, offset: %d\n", threadIdx.x, offset);
+        if (threadIdx.x == 0 || threadIdx.x == 32) {
+            printf("s2r loader tid: %d, offset: %d\n", threadIdx.x, offset);
+        }
 
         using Loader = detail::SharedToRegLoaderImpl<Shared, Reg, kRowExec,
                                                      kColExec, Shared::kType>;
@@ -566,6 +586,10 @@ struct RegToSharedStorer {
                                                       Shared, WarpReuse::kCont>;
         SharedOffset shared_offset_;
         int offset = shared_offset_.get_warp_offset();
+
+        if (threadIdx.x == 0 || threadIdx.x == 32) {
+            printf("r2s storer tid: %d, offset: %d\n", threadIdx.x, offset);
+        }
 
         using Storer = detail::RegToSharedStorerImpl<Reg, Shared, kRowExec,
                                                      kColExec, Reg::kType>;
