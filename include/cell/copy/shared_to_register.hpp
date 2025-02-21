@@ -509,11 +509,12 @@ struct SharedToRegLoader {
         // advance the pointer to input data to the current warp according to
         // warp reuse mode.
         int offset = shared_offset_.get_warp_offset();
+        int soffset = src.get_offset();
 
         using Loader = detail::SharedToRegLoaderImpl<Shared, Reg, kRowExec,
                                                      kColExec, Shared::kType>;
         Loader loader;
-        loader(src.data(), dst, offset);
+        loader(src.data(), dst, offset + soffset);
     }
 };
 
@@ -565,12 +566,13 @@ struct RegToSharedStorer {
                                                       Shared, WarpReuse::kCont>;
         SharedOffset shared_offset_;
         int offset = shared_offset_.get_warp_offset();
+        int soffset = dst_.get_offset();
 
         using Storer = detail::RegToSharedStorerImpl<Reg, Shared, kRowExec,
                                                      kColExec, Reg::kType>;
         Storer storer;
 
-        storer(src, dst_.mutable_data(), offset);
+        storer(src, dst_.mutable_data(), offset + soffset);
     }
 };
 }  // namespace tilefusion::cell::copy

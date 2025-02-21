@@ -14,8 +14,8 @@
 //// =============== Test Config=============== ////
 static const int kWarpPerRow = 2;
 static const int kWarpPerCol = 2;
-using WholeShape = GemmShape<4096, 4096, 128>;
-using CtaTileShape = GemmShape<64, 128, 128>;
+using WholeShape = GemmShape<4096, 4096, 256>;
+using CtaTileShape = GemmShape<32, 128, 128>;
 using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
 static constexpr int kRK = 64;
 
@@ -34,24 +34,23 @@ void run_test(std::ofstream& fout) {
 
     using Config = KeGemmTraits<InType, AccType, WholeShape, CtaTileShape, kRK,
                                 WarpLayout>;
-    auto tilefusion_gemm =
-        &gemm<InType, AccType, kM, kN, kK, kTM, kTN, kTK,
-              typename Config::GIteratorA, typename Config::SIteratorA,
-              typename Config::SharedA, typename Config::RegA,
-              typename Config::LoadSharedA, typename Config::LoadRegA,
-              typename Config::GIteratorB, typename Config::SIteratorB,
-              typename Config::SharedB, typename Config::RegB,
-              typename Config::LoadSharedB, typename Config::LoadRegB,
-              typename Config::GlobalC, typename Config::SharedC,
-              typename Config::Acc, typename Config::AccHalf,
-              typename Config::ConvertAcc, typename Config::StoreRegC,
-              typename Config::StoreSharedC>;
+    auto tilefusion_gemm = &tilefusion_gemm_kernel<
+        InType, AccType, kM, kN, kK, kTM, kTN, kTK, kRK,
+        typename Config::GIteratorA, typename Config::SIteratorA,
+        typename Config::SharedA, typename Config::RegA,
+        typename Config::LoadSharedA, typename Config::LoadRegA,
+        typename Config::GIteratorB, typename Config::SIteratorB,
+        typename Config::SharedB, typename Config::RegB,
+        typename Config::LoadSharedB, typename Config::LoadRegB,
+        typename Config::GlobalC, typename Config::SharedC,
+        typename Config::Acc, typename Config::AccHalf,
+        typename Config::ConvertAcc, typename Config::StoreRegC,
+        typename Config::StoreSharedC>;
 
     using KeTraits = benchmarks::cutlass_wrapper::GemmTraits<
         InType, kWarpPerRow, kWarpPerCol, kM, kN, kK, kTM, kTN, kTK>;
-    auto cutlass_gemm =
-        &benchmarks::cutlass_wrapper::gemm_kernel<InType, kM, kN, kK, kTM, kTN,
-                                                  kTK, KeTraits>;
+    auto cutlass_gemm = &benchmarks::cutlass_wrapper::cutlass_gemm_kernel<
+        InType, kM, kN, kK, kTM, kTN, kTK, KeTraits>;
 
     static constexpr int inputs = kTK * (kTN + kTM) * sizeof(InType);
     static constexpr int acc = kTM * kTN * sizeof(InType);
@@ -144,10 +143,15 @@ void run_test(std::ofstream& fout) {
     std::cout << "Test passed" << std::endl;
 #endif
 
-    //// =============== Timing =============== ////
+    // //// =============== Timing =============== ////
     thrust::fill(d_c.begin(), d_c.end(), static_cast<InType>(0.));
     thrust::fill(d_c2.begin(), d_c2.end(), static_cast<InType>(0.));
     thrust::fill(d_c3.begin(), d_c3.end(), static_cast<__half>(0.));
+
+    // cutlass_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC);
+    // cudaDeviceSynchronize();
+    // tilefusion_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC2);
+    // cudaDeviceSynchronize();
 
     float cublas_time = cublas_hgemm(kM, kN, kK, dA2, dB2, dC3, true);
     h_c3 = d_c3;
@@ -178,11 +182,20 @@ void run_test(std::ofstream& fout) {
     float base = cublas_time;
 
     fout << "[" << kM << ", " << kN << ", " << kK << "]\t[" << kTM << ", "
-         << kTN << ", " << kTK << "]\t" << kRK << "\t[" << kWarpPerRow << ", "
+         << kTN << ", " << kTK << "]\t" << kRK << "\t[" << kWarpPerRow << ","
          << kWarpPerCol << "]\t" << cublas_time << "\t" << cutlass_time << "("
          << std::setprecision(2) << cutlass_time / base << ")"
          << "\t" << std::setprecision(6) << tilefusion_time << " ("
          << std::setprecision(2) << tilefusion_time / base << ")" << std::endl;
+
+    std::cout << "[" << kM << ", " << kN << ", " << kK << "]\t[" << kTM << ", "
+              << kTN << ", " << kTK << "]\t" << kRK << "\t[" << kWarpPerRow
+              << "," << kWarpPerCol << "]\t" << cublas_time << "\t"
+              << cutlass_time << "(" << std::setprecision(2)
+              << cutlass_time / base << ")"
+              << "\t" << std::setprecision(6) << tilefusion_time << " ("
+              << std::setprecision(2) << tilefusion_time / base << ")"
+              << std::endl;
 }
 
 int main() {
@@ -198,6 +211,10 @@ int main() {
     fout << "[M, N, K]\t[kTM, kTN, kTK]\tkRK\tWarp Layout\t"
             "cuBLAS(ms)\tcutlass(ms)\ttilefusion(ms)"
          << std::endl;
+
+    std::cout << "[M, N, K]\t[kTM, kTN, kTK]\tkRK\tWarp Layout\t"
+                 "cuBLAS(ms)\tcutlass(ms)\ttilefusion(ms)"
+              << std::endl;
 
     run_test(fout);
     return 0;

@@ -99,21 +99,22 @@ struct KeGemmTraits {
     using StoreSharedC = SharedToGlobalStorer<SharedC, WarpLayout>;
 };
 
-template <typename InType, typename AccType,                    //
-          const int kM, const int kN, const int kK,             //
-          const int kTM, const int kTN, const int kTK,          //
-          typename GIteratorA,                                  //
-          typename SIteratorA,                                  //
-          typename SharedA, typename RegA,                      //
-          typename LoadSharedA, typename LoadRegA,              //
-          typename GIteratorB,                                  //
-          typename SIteratorB,                                  //
-          typename SharedB, typename RegB,                      //
-          typename LoadSharedB, typename LoadRegB,              //
-          typename GlobalC, typename SharedC,                   //
-          typename Acc, typename AccHalf, typename ConvertAcc,  //
+template <typename InType, typename AccType,                           //
+          const int kM, const int kN, const int kK,                    //
+          const int kTM, const int kTN, const int kTK, const int kRK,  //
+          typename GIteratorA,                                         //
+          typename SIteratorA,                                         //
+          typename SharedA, typename RegA,                             //
+          typename LoadSharedA, typename LoadRegA,                     //
+          typename GIteratorB,                                         //
+          typename SIteratorB,                                         //
+          typename SharedB, typename RegB,                             //
+          typename LoadSharedB, typename LoadRegB,                     //
+          typename GlobalC, typename SharedC,                          //
+          typename Acc, typename AccHalf, typename ConvertAcc,         //
           typename StoreRegC, typename StoreSharedC>
-__global__ void gemm(const InType* dA_, const InType* dB_, InType* dC_) {
+__global__ void tilefusion_gemm_kernel(const InType* dA_, const InType* dB_,
+                                       InType* dC_) {
     InType* dA = const_cast<InType*>(dA_) + blockIdx.x * kTM * kK;
     InType* dB = const_cast<InType*>(dB_) + blockIdx.y * kTN * kK;
     InType* dC = dC_ + blockIdx.x * kTM * kN + blockIdx.y * kTN;
@@ -162,6 +163,16 @@ __global__ void gemm(const InType* dA_, const InType* dB_, InType* dC_) {
 
             gemm(rA, rB, acc);
         }
+
+        // for (int k2 = 0; k2 < kTK; k2 += kRK) {
+        //     load_rA(sA, rA);
+        //     load_rB(sB, rB);
+
+        //     gemm(rA, rB, acc);
+
+        //     sA.move_tile(kRK);
+        //     sB.move_tile(kRK);
+        // }
     }
 
     convert_acc(acc, acc_half);
