@@ -1,0 +1,2 @@
+[M, N, K]	[kTM, kTN, kTK]	kRK	Warp Layout	cuBLAS(ms)	cutlass(ms)	tilefusion(ms)
+[64, 128, 128]	[64, 128, 128]	64	[4, 2]	0.005325	0.004997(0.94)	0.006103 (1.15)

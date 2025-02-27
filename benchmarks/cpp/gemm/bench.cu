@@ -12,9 +12,9 @@
 #define CHECK_CORRECTNESS true
 
 //// =============== Test Config=============== ////
-static const int kWarpPerRow = 2;
+static const int kWarpPerRow = 4;
 static const int kWarpPerCol = 2;
-using WholeShape = GemmShape<4096, 4096, 128>;
+using WholeShape = GemmShape<64, 128, 128>;
 using CtaTileShape = GemmShape<64, 128, 128>;
 using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
 static constexpr int kRK = 64;
@@ -130,8 +130,8 @@ void run_test(std::ofstream& fout) {
     h_c3 = d_c3;
 
     bool passed1 = check_results(
-        thrust::raw_pointer_cast(h_c2.data()), /*tilefusion */
-        thrust::raw_pointer_cast(h_c.data()), /*cutlass */ kM * kN);
+        thrust::raw_pointer_cast(h_c3.data()), /*cublas */
+        thrust::raw_pointer_cast(h_c2.data()), /*tilefusion */ kM * kN);
 
     bool passed2 = check_results(
         thrust::raw_pointer_cast(h_c3.data()), /*cublas */
