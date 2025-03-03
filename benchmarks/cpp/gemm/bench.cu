@@ -10,14 +10,16 @@
 #include <iomanip>
 
 #define CHECK_CORRECTNESS true
+// #define NCU true
+#define Timing true
 
 //// =============== Test Config=============== ////
-static const int kWarpPerRow = 4;
+static const int kWarpPerRow = 2;
 static const int kWarpPerCol = 2;
-using WholeShape = GemmShape<64, 128, 128>;
+using WholeShape = GemmShape<4096, 4096, 128>;
 using CtaTileShape = GemmShape<64, 128, 128>;
 using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
-static constexpr int kRK = 64;
+static constexpr int kRK = 16;
 
 void run_test(std::ofstream& fout) {
     //// =============== Declaration =============== ////
@@ -111,11 +113,33 @@ void run_test(std::ofstream& fout) {
     thrust::host_vector<InType> h_c2;
     thrust::host_vector<__half> h_c3;
 
+#ifdef NCU
+    thrust::fill(d_c.begin(), d_c.end(), static_cast<InType>(0.));
+    thrust::fill(d_c2.begin(), d_c2.end(), static_cast<InType>(0.));
+    thrust::fill(d_c3.begin(), d_c3.end(), static_cast<__half>(0.));
+
+    cutlass_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC);
+    cudaDeviceSynchronize();
+    h_c = d_c;
+
+    tilefusion_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC2);
+    cudaDeviceSynchronize();
+    h_c2 = d_c2;
+#endif
+
 //// =============== check correctness =============== ////
 #ifdef CHECK_CORRECTNESS
     thrust::fill(d_c.begin(), d_c.end(), static_cast<InType>(0.));
     thrust::fill(d_c2.begin(), d_c2.end(), static_cast<InType>(0.));
     thrust::fill(d_c3.begin(), d_c3.end(), static_cast<__half>(0.));
+
+    cutlass_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC);
+    cudaDeviceSynchronize();
+    h_c = d_c;
+
+    tilefusion_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC2);
+    cudaDeviceSynchronize();
+    h_c2 = d_c2;
 
     cutlass_gemm<<<dim_grid, dim_block, smem_size>>>(dA, dB, dC);
     cudaDeviceSynchronize();
@@ -144,6 +168,7 @@ void run_test(std::ofstream& fout) {
     std::cout << "Test passed" << std::endl;
 #endif
 
+#ifdef Timing
     //// =============== Timing =============== ////
     thrust::fill(d_c.begin(), d_c.end(), static_cast<InType>(0.));
     thrust::fill(d_c2.begin(), d_c2.end(), static_cast<InType>(0.));
@@ -178,11 +203,12 @@ void run_test(std::ofstream& fout) {
     float base = cublas_time;
 
     fout << "[" << kM << ", " << kN << ", " << kK << "]\t[" << kTM << ", "
-         << kTN << ", " << kTK << "]\t" << kRK << "\t[" << kWarpPerRow << ", "
+         << kTN << ", " << kTK << "]\t" << kRK << "\t[" << kWarpPerRow << ","
          << kWarpPerCol << "]\t" << cublas_time << "\t" << cutlass_time << "("
          << std::setprecision(2) << cutlass_time / base << ")"
          << "\t" << std::setprecision(6) << tilefusion_time << " ("
          << std::setprecision(2) << tilefusion_time / base << ")" << std::endl;
+#endif
 }
 
 int main() {
