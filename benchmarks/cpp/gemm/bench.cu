@@ -16,8 +16,8 @@
 //// =============== Test Config=============== ////
 static const int kWarpPerRow = 2;
 static const int kWarpPerCol = 2;
-using WholeShape = GemmShape<4096, 4096, 128>;
-using CtaTileShape = GemmShape<64, 128, 128>;
+using WholeShape = GemmShape<256, 256, 64>;
+using CtaTileShape = GemmShape<64, 128, 64>;
 using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
 static constexpr int kRK = 16;
 
@@ -36,24 +36,22 @@ void run_test(std::ofstream& fout) {
 
     using Config = KeGemmTraits<InType, AccType, WholeShape, CtaTileShape, kRK,
                                 WarpLayout>;
-    auto tilefusion_gemm =
-        &gemm<InType, AccType, kM, kN, kK, kTM, kTN, kTK,
-              typename Config::GIteratorA, typename Config::SIteratorA,
-              typename Config::SharedA, typename Config::RegA,
-              typename Config::LoadSharedA, typename Config::LoadRegA,
-              typename Config::GIteratorB, typename Config::SIteratorB,
-              typename Config::SharedB, typename Config::RegB,
-              typename Config::LoadSharedB, typename Config::LoadRegB,
-              typename Config::GlobalC, typename Config::SharedC,
-              typename Config::Acc, typename Config::AccHalf,
-              typename Config::ConvertAcc, typename Config::StoreRegC,
-              typename Config::StoreSharedC>;
+    auto tilefusion_gemm = &tilefusion_gemm_kernel<
+        InType, AccType, kM, kN, kK, kTM, kTN, kTK, typename Config::GIteratorA,
+        typename Config::SIteratorA, typename Config::SharedA,
+        typename Config::RegA, typename Config::LoadSharedA,
+        typename Config::LoadRegA, typename Config::GIteratorB,
+        typename Config::SIteratorB, typename Config::SharedB,
+        typename Config::RegB, typename Config::LoadSharedB,
+        typename Config::LoadRegB, typename Config::GlobalC,
+        typename Config::SharedC, typename Config::Acc,
+        typename Config::AccHalf, typename Config::ConvertAcc,
+        typename Config::StoreRegC, typename Config::StoreSharedC>;
 
     using KeTraits = benchmarks::cutlass_wrapper::GemmTraits<
         InType, kWarpPerRow, kWarpPerCol, kM, kN, kK, kTM, kTN, kTK>;
-    auto cutlass_gemm =
-        &benchmarks::cutlass_wrapper::gemm_kernel<InType, kM, kN, kK, kTM, kTN,
-                                                  kTK, KeTraits>;
+    auto cutlass_gemm = &benchmarks::cutlass_wrapper::cutlass_gemm_kernel<
+        InType, kM, kN, kK, kTM, kTN, kTK, KeTraits>;
 
     static constexpr int inputs = kTK * (kTN + kTM) * sizeof(InType);
     static constexpr int acc = kTM * kTN * sizeof(InType);

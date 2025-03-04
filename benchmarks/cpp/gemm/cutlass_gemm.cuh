@@ -79,7 +79,8 @@ struct GemmTraits : public Base {
 
 template <typename Element, const int kM, const int kN, const int kK,
           const int kTM, const int kTN, const int kTK, typename KeTraits>
-__global__ void gemm_kernel(const Element* dA, const Element* dB, Element* dC) {
+__global__ void cutlass_gemm_kernel(const Element* dA, const Element* dB,
+                                    Element* dC) {
     extern __shared__ __align__(sizeof(double)) unsigned char buf_[];
     auto* buf = reinterpret_cast<Element*>(buf_);
 

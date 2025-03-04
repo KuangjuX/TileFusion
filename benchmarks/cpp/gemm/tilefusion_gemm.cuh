@@ -113,7 +113,8 @@ template <typename InType, typename AccType,                    //
           typename GlobalC, typename SharedC,                   //
           typename Acc, typename AccHalf, typename ConvertAcc,  //
           typename StoreRegC, typename StoreSharedC>
-__global__ void gemm(const InType* dA_, const InType* dB_, InType* dC_) {
+__global__ void tilefusion_gemm_kernel(const InType* dA_, const InType* dB_,
+                                       InType* dC_) {
     InType* dA = const_cast<InType*>(dA_) + blockIdx.x * kTM * kK;
     InType* dB = const_cast<InType*>(dB_) + blockIdx.y * kTN * kK;
     InType* dC = dC_ + blockIdx.x * kTM * kN + blockIdx.y * kTN;
