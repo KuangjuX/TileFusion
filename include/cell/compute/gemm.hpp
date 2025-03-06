@@ -197,34 +197,6 @@ struct Gemm {
 
   private:
     TiledMma<InTypeA, OutType> tile_wmma;
-    // DEVICE void tile_wmma(const InTypeA* ra, const InTypeB* rb, OutType* rc)
-    // {
-    //     const uint32_t* A = reinterpret_cast<const uint32_t*>(ra);
-    //     const uint32_t* B = reinterpret_cast<const uint32_t*>(rb);
-    //     float* C = static_cast<float*>(rc);
-
-    //     asm volatile(
-    //         "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
-    //         "{%0,  %1,  %2,  %3},"
-    //         "{%4,  %5,  %6,  %7},"
-    //         "{%8,  %9},"
-    //         "{%10, %11, %12, %13};\n"
-    //         : "=f"(C[0]), "=f"(C[1]), "=f"(C[2]), "=f"(C[3])
-    //         : "r"(A[0]), "r"(A[1]), "r"(A[2]), "r"(A[3]), "r"(B[0]),
-    //         "r"(B[2]),
-    //           "f"(C[0]), "f"(C[1]), "f"(C[2]), "f"(C[3]));
-
-    //     asm volatile(
-    //         "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
-    //         "{%0,  %1,  %2,  %3},"
-    //         "{%4,  %5,  %6,  %7},"
-    //         "{%8,  %9},"
-    //         "{%10, %11, %12, %13};\n"
-    //         : "=f"(C[4]), "=f"(C[5]), "=f"(C[6]), "=f"(C[7])
-    //         : "r"(A[0]), "r"(A[1]), "r"(A[2]), "r"(A[3]), "r"(B[1]),
-    //         "r"(B[3]),
-    //           "f"(C[4]), "f"(C[5]), "f"(C[6]), "f"(C[7]));
-    // }
 };
 
 }  // namespace detail
