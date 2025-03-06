@@ -16,8 +16,8 @@
 //// =============== Test Config=============== ////
 static const int kWarpPerRow = 2;
 static const int kWarpPerCol = 2;
-using WholeShape = GemmShape<256, 256, 64>;
-using CtaTileShape = GemmShape<64, 128, 64>;
+using WholeShape = GemmShape<64, 64, 64>;
+using CtaTileShape = GemmShape<64, 64, 64>;
 using WarpLayout = tl::RowMajor<kWarpPerRow, kWarpPerCol>;
 static constexpr int kRK = 16;
 

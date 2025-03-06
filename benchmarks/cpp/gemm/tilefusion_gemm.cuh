@@ -135,9 +135,9 @@ __global__ void tilefusion_gemm_kernel(const InType* dA_, const InType* dB_,
     SIteratorB sBs(sB_ptr);
     RegB rB;
 
-    Acc acc;
+    // Acc acc;
     AccHalf acc_half;
-    ConvertAcc convert_acc;
+    // ConvertAcc convert_acc;
 
     SharedC sC(sC_ptr);
     GlobalC gC(dC);
@@ -161,11 +161,9 @@ __global__ void tilefusion_gemm_kernel(const InType* dA_, const InType* dB_,
             load_rA(sAs(k2), rA);
             load_rB(sBs(k2), rB);
 
-            gemm(rA, rB, acc);
+            gemm(rA, rB, acc_half);
         }
     }
-
-    convert_acc(acc, acc_half);
 
     store_rC(acc_half, sC);
     __syncthreads();
