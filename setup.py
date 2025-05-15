@@ -151,7 +151,6 @@ class CMakeBuildExt(build_ext):
                 ),
                 f"-DUSER_CUDA_ARCH_LIST={arch_list}" if arch_list else "",
                 f"-DNVCC_THREADS={nvcc_threads()}",
-                "-DUSE_SYSTEM_NVTX=ON",
             ]
 
             # Adding CMake arguments set as environment variable
