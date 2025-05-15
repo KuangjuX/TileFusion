@@ -30,6 +30,7 @@ def run_gemm(
     tile_k: int,
     num_stages: bool,
     pipeline_level: int,
+    warp_layout: torch.Tensor,
 ) -> None:
     """Run GEMM operation."""
     tensor_a = torch.randn(
@@ -50,6 +51,7 @@ def run_gemm(
         tile_k,
         num_stages,
         pipeline_level,
+        warp_layout,
     )
 
     ref_c = torch.mm(tensor_a.cpu(), tensor_b.cpu().T)
@@ -85,6 +87,7 @@ def run_gemm(
             "tile_k": 64,
             "num_stages": 1,
             "pipeline_level": 0,
+            "warp_layout": torch.tensor([1, 1], dtype=torch.int64),
         },
         {
             "name": "test_case1",
@@ -96,6 +99,7 @@ def run_gemm(
             "tile_k": 64,
             "num_stages": 2,
             "pipeline_level": 1,
+            "warp_layout": torch.tensor([1, 1], dtype=torch.int64),
         },
         {
             "name": "test_case2",
@@ -107,6 +111,7 @@ def run_gemm(
             "tile_k": 64,
             "num_stages": 2,
             "pipeline_level": 1,
+            "warp_layout": torch.tensor([1, 1], dtype=torch.int64),
         },
         {
             "name": "test_case3",
@@ -118,6 +123,7 @@ def run_gemm(
             "tile_k": 64,
             "num_stages": 3,
             "pipeline_level": 2,
+            "warp_layout": torch.tensor([1, 1], dtype=torch.int64),
         },
         {
             "name": "test_case4",
@@ -129,6 +135,31 @@ def run_gemm(
             "tile_k": 64,
             "num_stages": 3,
             "pipeline_level": 2,
+            "warp_layout": torch.tensor([1, 1], dtype=torch.int64),
+        },
+        {
+            "name": "test_case5",
+            "m": 512,
+            "n": 512,
+            "k": 512,
+            "tile_m": 64,
+            "tile_n": 128,
+            "tile_k": 128,
+            "num_stages": 2,
+            "pipeline_level": 1,
+            "warp_layout": torch.tensor([2, 2], dtype=torch.int64),
+        },
+        {
+            "name": "test_case6",
+            "m": 512,
+            "n": 512,
+            "k": 512,
+            "tile_m": 64,
+            "tile_n": 128,
+            "tile_k": 128,
+            "num_stages": 3,
+            "pipeline_level": 2,
+            "warp_layout": torch.tensor([2, 2], dtype=torch.int64),
         },
     ],
     ids=lambda x: x["name"],
@@ -144,6 +175,7 @@ def test_gemm(test_case: dict[str, Any]) -> None:
         test_case["tile_k"],
         test_case["num_stages"],
         test_case["pipeline_level"],
+        test_case["warp_layout"],
     )
 
 

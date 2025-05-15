@@ -21,6 +21,7 @@ def gemm(
     tile_k: int,
     num_stages: int,
     pipeline_level: int,
+    warp_layout: torch.Tensor,
 ) -> None:
     """GEMM operation.
 
@@ -40,7 +41,12 @@ def gemm(
                         Level 3: Further pipelining by prefetching data from
                         shared memory to registers for certain loops and
                         kernels.
+        warp_layout: The layout of the warp.
     """
+    assert len(warp_layout) == 2, "warp_layout must be a list of two integers"
+    assert (
+        warp_layout[0] > 0 and warp_layout[1] > 0
+    ), "warp_layout must be positive"
     torch.ops.tilefusion.gemm(
         tensor_a,
         tensor_b,
@@ -50,4 +56,5 @@ def gemm(
         tile_k,
         num_stages,
         pipeline_level,
+        warp_layout,
     )
