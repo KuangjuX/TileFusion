@@ -260,7 +260,6 @@ __device__ __forceinline__ void ke_gemm_level2_pipeline(const InType* dA,
     static constexpr int kTN = KeTraits::kTN;
     static constexpr int kN = KeTraits::kN;
     static constexpr int kK = KeTraits::kK;
-    static constexpr int kRK = KeTraits::kRK;
     static constexpr int kNumStages = KeTraits::kNumStages;
 
     int offset_a = blockIdx.x * kTM * kK;
